@@ -106,6 +106,19 @@ def validate_skill_routing(root: Path, errors: list[str]) -> None:
             errors.append(f"SKILL.md does not route to {required}")
 
 
+def validate_attribution(root: Path, errors: list[str]) -> None:
+    license_text = read_text(root / "LICENSE")
+    readme_text = read_text(root / "README.md")
+    if "MIT License" not in license_text:
+        errors.append("LICENSE must retain the MIT License heading.")
+    if "tufte-claude-skill contributors" not in license_text:
+        errors.append("LICENSE must retain upstream contributor attribution.")
+    if "aref-vc/tufte-claude-skill" not in readme_text:
+        errors.append("README.md must retain upstream fork attribution.")
+    if "MIT" not in readme_text:
+        errors.append("README.md must mention the upstream MIT license.")
+
+
 def iter_text_files(root: Path) -> list[Path]:
     return [
         path
@@ -188,6 +201,7 @@ def validate_relative_links(root: Path, errors: list[str]) -> None:
 
 
 def parse_simple_interface_yaml(text: str) -> dict[str, str]:
+    """Parse the flat two-space `interface` block generated for this package."""
     fields: dict[str, str] = {}
     in_interface = False
     for line in text.splitlines():
@@ -252,6 +266,8 @@ def main() -> int:
     if (root / "SKILL.md").exists():
         validate_frontmatter(root, errors)
         validate_skill_routing(root, errors)
+    if (root / "LICENSE").exists() and (root / "README.md").exists():
+        validate_attribution(root, errors)
     validate_stale_claude_paths(root, errors)
     validate_relative_links(root, errors)
     validate_openai_yaml(root, errors)
