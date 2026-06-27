@@ -36,8 +36,8 @@ SKILL_REFERENCES = [
 ]
 
 STALE_CLAUDE_PATTERNS = [
-    r"~/.claude",
-    r"\.claude/skills",
+    r"~[/\\]\.claude",
+    r"\.claude[/\\]skills",
     r"Claude Code",
     r"loaded by Claude",
     r"ask Claude",
@@ -112,6 +112,7 @@ def iter_text_files(root: Path) -> list[Path]:
         for path in sorted(root.rglob("*"))
         if path.is_file()
         and ".git" not in path.parts
+        and ".adversarial-review" not in path.parts
         and path.suffix.lower() in TEXT_EXTENSIONS
     ]
 
@@ -168,7 +169,7 @@ def validate_relative_links(root: Path, errors: list[str]) -> None:
             continue
         text = read_text(path)
         targets = extract_markdown_links(text)
-        if path.suffix.lower() in {".html", ".svg"}:
+        if path.suffix.lower() in {".html", ".svg", ".md"}:
             targets.extend(extract_html_links(text))
         for raw_target in targets:
             if is_external(raw_target):
@@ -186,27 +187,53 @@ def validate_relative_links(root: Path, errors: list[str]) -> None:
                 errors.append(f"Broken relative link in {rel(path, root)}: {raw_target}")
 
 
+def parse_simple_interface_yaml(text: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    in_interface = False
+    for line in text.splitlines():
+        if line.strip() == "interface:":
+            in_interface = True
+            continue
+        if not in_interface:
+            continue
+        if line and not line.startswith("  "):
+            break
+        stripped = line.strip()
+        if not stripped:
+            continue
+        key, sep, value = stripped.partition(":")
+        if not sep:
+            continue
+        fields[key] = value.strip().strip('"')
+    return fields
+
+
 def validate_openai_yaml(root: Path, errors: list[str]) -> None:
     path = root / "agents/openai.yaml"
     if not path.exists():
         return
     text = read_text(path)
-    required = [
-        "interface:",
-        "display_name:",
-        "short_description:",
-        "default_prompt:",
-        "$tufte",
-    ]
-    for token in required:
-        if token not in text:
-            errors.append(f"agents/openai.yaml missing {token}")
+    fields = parse_simple_interface_yaml(text)
+    if not fields:
+        errors.append("agents/openai.yaml must contain an interface block.")
+        return
 
-    match = re.search(r'short_description:\s*"([^"]+)"', text)
-    if match:
-        length = len(match.group(1))
+    for required in ("display_name", "short_description", "default_prompt"):
+        if not fields.get(required):
+            errors.append(f"agents/openai.yaml missing interface.{required}")
+
+    if "short_description" in fields:
+        length = len(fields["short_description"])
         if length < 25 or length > 64:
             errors.append("agents/openai.yaml short_description must be 25-64 chars.")
+
+    default_prompt = fields.get("default_prompt", "")
+    if "$tufte" not in default_prompt:
+        errors.append("agents/openai.yaml default_prompt must mention $tufte.")
+
+    brand_color = fields.get("brand_color")
+    if brand_color and not re.fullmatch(r"#[0-9A-Fa-f]{6}", brand_color):
+        errors.append("agents/openai.yaml brand_color must be a 6-digit hex color.")
 
 
 def main() -> int:

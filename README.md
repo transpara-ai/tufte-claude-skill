@@ -66,6 +66,8 @@ Use $tufte to critique this chart code and return a React-oriented repair plan.
 Use $tufte to choose the right chart for monthly revenue by region, then produce self-contained HTML/SVG.
 ```
 
+Codex discovers skills from `SKILL.md` frontmatter. This repo also includes `agents/openai.yaml` metadata following current Codex skill guidance for UI display name, short description, brand color, and a default prompt. The `$tufte` examples follow the current `$skill-name` explicit mention convention; natural-language prompts remain the portable path.
+
 Codex should use the skill when work involves:
 
 - Chart critique or redesign.
@@ -137,7 +139,11 @@ Run the local checks before opening or updating a PR:
 
 ```bash
 python3 scripts/validate-skill.py .
-python3 /home/transpara/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
+
+quick_validate="${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py"
+if [ -f "$quick_validate" ]; then
+  python3 "$quick_validate" .
+fi
 ```
 
 The repo-local validator checks:
@@ -149,6 +155,10 @@ The repo-local validator checks:
 - Stale Claude-only install paths or invocation assumptions.
 - Basic `agents/openai.yaml` metadata.
 
+The smoke-test example is a documentation fixture for expected behavior. The validation scripts check package structure and references; they do not prove that a future model invocation will produce a Tufte-compliant chart.
+
 ## Attribution And License
 
 Forked from [`aref-vc/tufte-claude-skill`](https://github.com/aref-vc/tufte-claude-skill), which was released under MIT. This fork preserves the upstream license and contributor attribution in [`LICENSE`](./LICENSE).
+
+Short quotations and references to Edward R. Tufte's books are attributed inline and retained for educational reference. This project is not affiliated with or endorsed by Edward R. Tufte.
