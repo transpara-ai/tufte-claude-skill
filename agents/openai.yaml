@@ -1,0 +1,5 @@
+interface:
+  display_name: "Tufte Charts"
+  short_description: "Tufte-style data visualization guidance"
+  brand_color: "#B3261E"
+  default_prompt: "Use $tufte to critique this chart and return a clearer Codex-ready chart plan."
